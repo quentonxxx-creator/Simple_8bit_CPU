@@ -1,0 +1,9 @@
+# Vivado Junk Files
+*.log
+*.jou
+*.pb
+*.dir/
+*.cache/
+*.hw/
+*.sim/
+*.ip_user_files/
