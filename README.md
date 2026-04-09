@@ -4,46 +4,44 @@
 
 ---
 
-## 🛠️ 目前進度
+## 🛠️ 開發進度與模組說明
 
 ### 1. 算術邏輯單元 (ALU)
-ALU 是 CPU 的運算核心，支援加法、減法、邏輯運算等功能。
-- **實作功能**：ADD, SUB, AND, OR, XOR, SLT。
-- **狀態標誌**：支援 Zero Flag 偵測。
+CPU 的運算核心，負責執行所有的算術與邏輯指令。
+- **支援功能**：加法 (ADD)、減法 (SUB)、及 (AND)、或 (OR)、互斥或 (XOR) 以及比較 (SLT)。
+- **狀態標誌**：具備 `zero` flag，當輸出為 0 時會自動觸發，作為未來分支指令的判斷依據。
 
-### 2. 暫存器堆 (Register File) - 🆕 *NEW*
-暫存器堆是 CPU 的短期記憶空間，用來存放運算過程中的暫時數據。
-- **規格**：32 個 8-bit 暫存器 (R0 ~ R31)。
-- **特性**：
-    - **R0 恆為 0**：在硬體層級鎖死 R0 的輸出為 0，確保運算基準。
-    - **同步寫入**：僅在時脈上升緣 (`posedge clk`) 且 `write_en` 開啟時存入數據。
-    - **異步讀取**：只要給出地址，數據會立即流出，不需等待時脈。
+### 2. 暫存器堆 (Register File)
+CPU 的內部存儲空間，提供 32 個 8-bit 暫存器供運算使用。
+- **R0 恆為零**：硬體限制 `read_reg` 為 0 時輸出必為 0，符合 MIPS/RISC 慣例。
+- **時序設計**：採用同步寫入（`posedge clk`）與異步讀取（`assign`）設計。
 
 ---
 
-## 📈 模擬結果 (Simulation)
+## 📈 模擬驗證結果 (Simulation)
 
-### 暫存器堆波形驗證 (`tb_register_file.v`)
-在 Vivado Simulator 中，我們觀察到以下關鍵行為：
+### 階段一：ALU 運算驗證 (`tb_alu.v`)
 
+- 驗證了 `10 + 5 = 15` 以及 `20 - 7 = 13` 等基本運算。
+- 當執行 `5 - 5` 時，`zero` 訊號成功拉高，確認標誌位邏輯正確。
 
-1. **Reset 階段**：當 `reset` 訊號拉高時，所有暫存器內容清空為 `00`。
-2. **寫入驗證**：在 `35ns` 的時脈上升緣，數據 `8'hA5` 被成功存入 `R1` 抽屜。
-3. **讀取驗證**：當 `read_reg1` 指向 `5'd1` 時，`read_data1` 立即噴出 `a5`，證明讀取邏輯正確。
-4. **鎖存功能**：即使 `write_en` 掉回低電位，數據依然穩穩鎖在暫存器中。
+### 階段二：暫存器存取驗證 (`tb_register_file.v`)
+
+- **Reset 測試**：`reset` 訊號有效時，所有暫存器成功清空為 0。
+- **寫入測試**：在 `clk` 上升緣精準將數據 `8'hA5` 存入指定暫存器。
+- **讀取測試**：驗證 `read_data` 能即時反應暫存器內容，且 `wire [7:0]` 寬度確保資料完整。
 
 ---
 
-## 📂 專案結構說明
+## 📂 專案結構
 
-- **Simple_8bit_CPU.srcs/sources_1/new/**：核心邏輯 (`alu.v`, `register_file.v`)。
-- **Simple_8bit_CPU.srcs/sim_1/new/**：測試平台 (`tb_alu.v`, `tb_register_file.v`)。
+- **sources_1/new/**：核心電路 `alu.v`, `register_file.v`。
+- **sim_1/new/**：測試平台 `tb_alu.v`, `tb_register_file.v`。
 - **Simple_8bit_CPU.xpr**：Vivado 專案設定檔。
 
 ---
 
-## 📅 下一步開發計畫
-
-- [ ] **Instruction Memory**：存放機器碼指令的唯讀記憶體。
-- [ ] **Control Unit (CU)**：賦予 CPU 靈魂，根據指令產生控制訊號。
-- [ ] **Top Module 集成**：串接 ALU 與 Register File，完成第一個 `ADD` 指令循環。
+## 📅 下一步計畫
+- [ ] **Instruction Memory**：建置儲存程式碼的空間。
+- [ ] **Control Unit**：實作指令解碼與控制邏輯。
+- [ ] **系統整合**：將 ALU 與 Register File 接上匯流排。
