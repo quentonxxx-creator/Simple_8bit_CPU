@@ -1,47 +1,155 @@
-# 🚀 Simple 8-bit CPU Design (Verilog)
+# Simple 8-bit CPU (Verilog)
+# 簡易 8 位元 CPU（Verilog 實作）
 
-這是一個從零開始實作的 **8 位元 RISC 架構 CPU** 專案，使用 Verilog HDL 撰寫，並透過 Xilinx Vivado 進行模擬驗證。
-
----
-
-## 🛠️ 開發進度與模組說明
-
-### 1. 算術邏輯單元 (ALU)
-CPU 的運算核心，負責執行所有的算術與邏輯指令。
-- **支援功能**：加法 (ADD)、減法 (SUB)、及 (AND)、或 (OR)、互斥或 (XOR) 以及比較 (SLT)。
-- **狀態標誌**：具備 `zero` flag，當輸出為 0 時會自動觸發，作為未來分支指令的判斷依據。
-
-### 2. 暫存器堆 (Register File)
-CPU 的內部存儲空間，提供 32 個 8-bit 暫存器供運算使用。
-- **R0 恆為零**：硬體限制 `read_reg` 為 0 時輸出必為 0，符合 MIPS/RISC 慣例。
-- **時序設計**：採用同步寫入（`posedge clk`）與異步讀取（`assign`）設計。
+> A simple 8-bit CPU designed and simulated in Verilog, featuring a program counter, ALU, and basic instruction execution.
+>
+> 以 Verilog 設計並模擬的簡易 8 位元 CPU，包含程式計數器、算術邏輯單元（ALU）及基本指令執行功能。
 
 ---
 
-## 📈 模擬驗證結果 (Simulation)
+## 📌 Project Overview / 專案簡介
 
-### 階段一：ALU 運算驗證 (`tb_alu.v`)
+This project implements a simple 8-bit CPU using Verilog HDL. The CPU is designed for educational purposes to demonstrate fundamental digital design concepts such as clocking, reset logic, program counters, and arithmetic/logic operations.
 
-- 驗證了 `10 + 5 = 15` 以及 `20 - 7 = 13` 等基本運算。
-- 當執行 `5 - 5` 時，`zero` 訊號成功拉高，確認標誌位邏輯正確。
-
-### 階段二：暫存器存取驗證 (`tb_register_file.v`)
-
-- **Reset 測試**：`reset` 訊號有效時，所有暫存器成功清空為 0。
-- **寫入測試**：在 `clk` 上升緣精準將數據 `8'hA5` 存入指定暫存器。
-- **讀取測試**：驗證 `read_data` 能即時反應暫存器內容，且 `wire [7:0]` 寬度確保資料完整。
+本專案使用 Verilog HDL 實作一個簡易的 8 位元 CPU，目的是以實作方式學習數位設計的基本概念，包括時脈、重置邏輯、程式計數器與算術/邏輯運算。
 
 ---
 
-## 📂 專案結構
+## 🧩 Features / 功能特色
 
-- **sources_1/new/**：核心電路 `alu.v`, `register_file.v`。
-- **sim_1/new/**：測試平台 `tb_alu.v`, `tb_register_file.v`。
-- **Simple_8bit_CPU.xpr**：Vivado 專案設定檔。
+- ✅ 8-bit data path / 8 位元資料路徑
+- ✅ Program Counter (PC) with auto-increment / 程式計數器（PC）自動遞增
+- ✅ ALU supporting basic arithmetic and logic operations / ALU 支援基本算術與邏輯運算
+- ✅ Synchronous reset / 同步重置
+- ✅ Clock-driven sequential execution / 時脈驅動的順序執行
+- ✅ Simulated and verified with waveform output / 透過波形輸出進行模擬驗證
 
 ---
 
-## 📅 下一步計畫
-- [ ] **Instruction Memory**：建置儲存程式碼的空間。
-- [ ] **Control Unit**：實作指令解碼與控制邏輯。
-- [ ] **系統整合**：將 ALU 與 Register File 接上匯流排。
+## 🗂️ File Structure / 檔案結構
+
+```
+Simple_8bit_CPU/
+├── src/
+│   ├── cpu.v            # Top-level CPU module / 頂層 CPU 模組
+│   ├── alu.v            # Arithmetic Logic Unit / 算術邏輯單元
+│   ├── pc.v             # Program Counter / 程式計數器
+│   └── control_unit.v   # Control Unit / 控制單元
+├── tb/
+│   └── tb_cpu.v         # Testbench / 測試平台
+├── sim/
+│   └── waveform.png     # Simulation waveform screenshot / 模擬波形截圖
+└── README.md
+```
+
+---
+
+## ⚙️ Module Description / 模組說明
+
+### Program Counter (`pc.v`) / 程式計數器
+- Increments by 1 on each rising clock edge / 每個上升緣時 PC 加 1
+- Resets to `0` when `reset` is asserted / 當 `reset` 拉高時歸零
+- Current simulation shows PC counting from 0 to 12+ / 模擬中 PC 從 0 計數至 12+
+
+### ALU (`alu.v`) / 算術邏輯單元
+- Performs 8-bit arithmetic and logic operations / 執行 8 位元算術與邏輯運算
+- Currently outputting `0` pending instruction decode integration / 目前輸出為 0，等待指令解碼整合
+
+### Control Unit (`control_unit.v`) / 控制單元
+- Decodes instructions and generates control signals / 解碼指令並產生控制信號
+
+---
+
+## 🖥️ Simulation / 模擬結果
+
+Simulated using a Verilog simulator (e.g., ModelSim / Icarus Verilog).
+
+使用 Verilog 模擬器（如 ModelSim / Icarus Verilog）進行模擬。
+
+| Signal / 信號 | Description / 說明 |
+|---|---|
+| `clk` | System clock, period ~10ns / 系統時脈，週期約 10ns |
+| `reset` | Active-high synchronous reset / 高準位同步重置 |
+| `alu_out` | ALU output (currently 0) / ALU 輸出（目前為 0）|
+| `pc` | Program counter, increments each cycle / 程式計數器，每週期加 1 |
+
+**Waveform / 波形截圖：**
+
+![Simulation Waveform](sim/waveform.png)
+
+---
+
+## 🚀 How to Run / 如何執行
+
+### Using Icarus Verilog / 使用 Icarus Verilog
+
+```bash
+# Compile / 編譯
+iverilog -o sim_out tb/tb_cpu.v src/cpu.v src/alu.v src/pc.v
+
+# Run simulation / 執行模擬
+vvp sim_out
+
+# View waveform (requires GTKWave) / 查看波形（需安裝 GTKWave）
+gtkwave dump.vcd
+```
+
+### Using ModelSim / 使用 ModelSim
+
+```tcl
+vlog src/*.v tb/tb_cpu.v
+vsim tb_cpu
+run -all
+```
+
+---
+
+## 📐 Architecture / 架構圖
+
+```
+         ┌─────────┐      ┌──────────┐      ┌─────────┐
+ clk ───►│   PC    │─────►│  Instr.  │─────►│ Control │
+reset───►│(Counter)│      │  Memory  │      │  Unit   │
+         └─────────┘      └──────────┘      └────┬────┘
+                                                  │
+                                            ┌─────▼─────┐
+                                            │    ALU    │
+                                            │  (8-bit)  │
+                                            └───────────┘
+```
+
+---
+
+## 🛠️ Development Environment / 開發環境
+
+| Tool / 工具 | Version / 版本 |
+|---|---|
+| Verilog Simulator | ModelSim / Icarus Verilog |
+| Language / 語言 | Verilog HDL |
+| Target / 目標平台 | FPGA / Simulation |
+
+---
+
+## 📅 Development Progress / 開發進度
+
+- [x] Program Counter (PC) / 程式計數器
+- [x] Clock & Reset logic / 時脈與重置邏輯
+- [x] Basic ALU structure / 基本 ALU 架構
+- [ ] Instruction Memory / 指令記憶體
+- [ ] Instruction Decode / 指令解碼
+- [ ] Register File / 暫存器組
+- [ ] Data Memory / 資料記憶體
+- [ ] Full instruction set / 完整指令集
+
+---
+
+## 📄 License / 授權
+
+MIT License
+
+---
+
+## 👤 Author / 作者
+
+**quentonxxx-creator**
+GitHub: [@quentonxxx-creator](https://github.com/quentonxxx-creator)
