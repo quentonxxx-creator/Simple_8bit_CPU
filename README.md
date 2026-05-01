@@ -1,155 +1,176 @@
-# Simple 8-bit CPU (Verilog)
-# 簡易 8 位元 CPU（Verilog 實作）
+# 🚀 Simple 8-bit CPU Design (Verilog)
 
-> A simple 8-bit CPU designed and simulated in Verilog, featuring a program counter, ALU, and basic instruction execution.
->
-> 以 Verilog 設計並模擬的簡易 8 位元 CPU，包含程式計數器、算術邏輯單元（ALU）及基本指令執行功能。
+以 Verilog HDL 從零實作的 **8 位元 RISC 架構 CPU**，使用 Xilinx Vivado 進行模擬驗證。
 
 ---
 
-## 📌 Project Overview / 專案簡介
+## 🏗️ 系統架構
 
-This project implements a simple 8-bit CPU using Verilog HDL. The CPU is designed for educational purposes to demonstrate fundamental digital design concepts such as clocking, reset logic, program counters, and arithmetic/logic operations.
-
-本專案使用 Verilog HDL 實作一個簡易的 8 位元 CPU，目的是以實作方式學習數位設計的基本概念，包括時脈、重置邏輯、程式計數器與算術/邏輯運算。
+```
+         ┌──────────────────────────────────────────────────────┐
+         │                  simple_cpu_top.v                    │
+         │                                                      │
+  clk ──►│  ┌──────┐   ┌──────────┐   ┌──────────────┐        │
+reset ──►│  │  PC  │──►│  Instr   │──►│   Control    │        │
+         │  └──────┘   │  Memory  │   │   Unit       │        │
+         │             └──────────┘   └──────┬───────┘        │
+         │                                   │ 控制信號         │
+         │  ┌─────────────────┐   ┌──────────▼──────┐         │
+         │  │  Register File  │◄──│      ALU        │         │
+         │  │   (16 × 8-bit)  │──►│    (8-bit)      │         │
+         │  └─────────────────┘   └──────────┬──────┘         │
+         │                                   │ addr/data       │
+         │                        ┌──────────▼──────┐         │
+         │                        │   Data Memory   │         │
+         │                        │  (256 × 8-bit)  │         │
+         │                        └─────────────────┘         │
+         └──────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🧩 Features / 功能特色
+## 📋 完整指令集（ISA）
 
-- ✅ 8-bit data path / 8 位元資料路徑
-- ✅ Program Counter (PC) with auto-increment / 程式計數器（PC）自動遞增
-- ✅ ALU supporting basic arithmetic and logic operations / ALU 支援基本算術與邏輯運算
-- ✅ Synchronous reset / 同步重置
-- ✅ Clock-driven sequential execution / 時脈驅動的順序執行
-- ✅ Simulated and verified with waveform output / 透過波形輸出進行模擬驗證
+| Opcode | 指令  | 格式 | 說明 |
+|--------|-------|------|------|
+| `0`    | ADD   | R    | `rd ← rs + rt` |
+| `1`    | SUB   | R    | `rd ← rs - rt` |
+| `2`    | AND   | R    | `rd ← rs & rt` |
+| `3`    | OR    | R    | `rd ← rs \| rt` |
+| `4`    | XOR   | R    | `rd ← rs ^ rt` |
+| `5`    | SLT   | R    | `rd ← (rs < rt) ? 1 : 0` |
+| `6`    | ADDI  | I    | `rd ← rs + imm` |
+| `7`    | LI    | I    | `rd ← imm` |
+| `8`    | BEQ   | I    | `if (rs == rt) PC ← PC+1+imm` |
+| `9`    | LOAD  | I    | `rd ← MEM[rs + imm]` |
+| `A`    | STORE | I    | `MEM[rs + imm] ← rd` |
+| `F`    | NOP   | -    | 無動作 |
+
+### 指令格式（16-bit）
+
+```
+ 15      12  11      8   7       4   3       0
+┌──────────┬──────────┬──────────┬──────────┐
+│  opcode  │    rd    │    rs    │  rt/imm  │
+│  [15:12] │  [11:8]  │  [7:4]  │  [3:0]   │
+└──────────┴──────────┴──────────┴──────────┘
+```
 
 ---
 
-## 🗂️ File Structure / 檔案結構
+## 🛠️ 模組說明
+
+### `pc.v` — 程式計數器
+- 接受外部 `pc_next` 輸入，支援分支跳躍
+- 每個 `clk` 上升緣更新，`reset` 時歸零
+- 8-bit 輸出，最多定址 256 條指令
+
+### `instruction_mem.v` — 指令記憶體（ROM）
+- 256 × 16-bit 唯讀記憶體
+- 異步讀取，以 PC 地址取出指令
+
+### `control_unit.v` — 控制單元
+- 解析 4-bit opcode，產生所有控制信號
+- 輸出：`reg_write`、`alu_src`、`branch`、`mem_read`、`mem_write`、`mem_to_reg`、`alu_op`
+
+### `alu.v` — 算術邏輯單元
+- 支援 6 種運算：ADD / SUB / AND / OR / XOR / SLT
+- 具備 `zero` flag，結果為 0 時觸發（供 BEQ 使用）
+
+### `register_file.v` — 暫存器堆
+- 16 個 8-bit 暫存器（R0 ～ R15）
+- **R0 恆為零**（RISC 慣例）
+- 3 個讀口（支援 STORE 指令同時讀 base 和 data）
+- 同步寫入 / 異步讀取
+
+### `data_mem.v` — 資料記憶體（RAM）
+- 256 × 8-bit 讀寫記憶體
+- 同步寫入（STORE）/ 異步讀取（LOAD）
+- 地址由 ALU 計算（`rs + imm`）
+
+### `simple_cpu_top.v` — 頂層整合
+- 整合所有模組為完整資料路徑
+- 支援 write-back MUX（ALU 結果 or 記憶體資料）
+- 支援 BEQ 分支邏輯（`branch & zero_flag`）
+
+---
+
+## 📈 模擬驗證結果
+
+所有指令皆通過驗證：
+
+| PC | 指令 | 結果 | 狀態 |
+|----|------|------|------|
+| 0  | LI R1, 10       | ALU=10  | ✅ |
+| 1  | LI R2, 3        | ALU=3   | ✅ |
+| 2  | ADD R3=R1+R2    | ALU=13  | ✅ |
+| 3  | SUB R4=R1-R2    | ALU=7   | ✅ |
+| 4  | SLT R5=R2<R1    | ALU=1   | ✅ |
+| 5  | ADDI R6=R1+5    | ALU=15  | ✅ |
+| 6  | BEQ R0,R0,+1   | 跳到PC=8 | ✅ |
+| 8  | AND R7=R1&R2    | ALU=2   | ✅ |
+| 9  | OR R8=R1\|R2   | ALU=11  | ✅ |
+| 10 | XOR R9=R1^R2   | ALU=9   | ✅ |
+| 11 | STORE MEM[5]=R3 | addr=5  | ✅ |
+| 12 | STORE MEM[6]=R1 | addr=6  | ✅ |
+| 13 | LOAD RA←MEM[5] | addr=5  | ✅ |
+| 15 | LOAD RB←MEM[6] | addr=6  | ✅ |
+| 18 | ADD RC=RA+RB   | ALU=23  | ✅ |
+
+---
+
+## 📂 專案結構
 
 ```
 Simple_8bit_CPU/
-├── src/
-│   ├── cpu.v            # Top-level CPU module / 頂層 CPU 模組
-│   ├── alu.v            # Arithmetic Logic Unit / 算術邏輯單元
-│   ├── pc.v             # Program Counter / 程式計數器
-│   └── control_unit.v   # Control Unit / 控制單元
-├── tb/
-│   └── tb_cpu.v         # Testbench / 測試平台
-├── sim/
-│   └── waveform.png     # Simulation waveform screenshot / 模擬波形截圖
-└── README.md
+├── Simple_8bit_CPU.srcs/
+│   ├── sources_1/new/
+│   │   ├── simple_cpu_top.v    # 頂層整合模組
+│   │   ├── pc.v                # 程式計數器
+│   │   ├── instruction_mem.v   # 指令記憶體 (ROM)
+│   │   ├── register_file.v     # 暫存器堆 (16×8-bit，3讀口)
+│   │   ├── alu.v               # 算術邏輯單元
+│   │   ├── control_unit.v      # 控制單元
+│   │   └── data_mem.v          # 資料記憶體 (RAM)
+│   └── sim_1/new/
+│       ├── tb_simple_cpu_top.v # 系統整合測試
+│       ├── tb_control_unit.v   # 控制單元測試
+│       ├── tb_register_file.v  # 暫存器堆測試
+│       └── tb_alu.v            # ALU 測試
+├── Simple_8bit_CPU.xpr         # Vivado 專案設定檔
+├── README.md                   # 中文說明
+└── README_EN.md                # 英文說明
 ```
 
 ---
 
-## ⚙️ Module Description / 模組說明
+## 🛠️ 開發環境
 
-### Program Counter (`pc.v`) / 程式計數器
-- Increments by 1 on each rising clock edge / 每個上升緣時 PC 加 1
-- Resets to `0` when `reset` is asserted / 當 `reset` 拉高時歸零
-- Current simulation shows PC counting from 0 to 12+ / 模擬中 PC 從 0 計數至 12+
-
-### ALU (`alu.v`) / 算術邏輯單元
-- Performs 8-bit arithmetic and logic operations / 執行 8 位元算術與邏輯運算
-- Currently outputting `0` pending instruction decode integration / 目前輸出為 0，等待指令解碼整合
-
-### Control Unit (`control_unit.v`) / 控制單元
-- Decodes instructions and generates control signals / 解碼指令並產生控制信號
+| 工具 | 說明 |
+|------|------|
+| HDL 語言 | Verilog HDL |
+| 開發工具 | Xilinx Vivado 2025.2 |
+| 模擬器   | Vivado Simulator (xsim) |
 
 ---
 
-## 🖥️ Simulation / 模擬結果
+## 📅 開發進度
 
-Simulated using a Verilog simulator (e.g., ModelSim / Icarus Verilog).
-
-使用 Verilog 模擬器（如 ModelSim / Icarus Verilog）進行模擬。
-
-| Signal / 信號 | Description / 說明 |
-|---|---|
-| `clk` | System clock, period ~10ns / 系統時脈，週期約 10ns |
-| `reset` | Active-high synchronous reset / 高準位同步重置 |
-| `alu_out` | ALU output (currently 0) / ALU 輸出（目前為 0）|
-| `pc` | Program counter, increments each cycle / 程式計數器，每週期加 1 |
-
-**Waveform / 波形截圖：**
-
-![Simulation Waveform](sim/waveform.png)
+- [x] 算術邏輯單元 ALU（ADD / SUB / AND / OR / XOR / SLT）
+- [x] 暫存器堆（16 × 8-bit，R0 恆為零，3 讀口）
+- [x] 程式計數器 PC（支援分支跳躍）
+- [x] 指令記憶體（ROM，16-bit 指令格式）
+- [x] 控制單元（Control Unit，12 種指令）
+- [x] 立即數支援（ADDI / LI）
+- [x] 分支指令（BEQ）
+- [x] 資料記憶體（RAM，LOAD / STORE）
+- [x] 頂層系統整合與完整模擬驗證
+- [ ] 更多分支指令（BNE / BLT）
+- [ ] Pipeline（流水線架構）
+- [ ] 完整組合語言工具鏈
 
 ---
 
-## 🚀 How to Run / 如何執行
-
-### Using Icarus Verilog / 使用 Icarus Verilog
-
-```bash
-# Compile / 編譯
-iverilog -o sim_out tb/tb_cpu.v src/cpu.v src/alu.v src/pc.v
-
-# Run simulation / 執行模擬
-vvp sim_out
-
-# View waveform (requires GTKWave) / 查看波形（需安裝 GTKWave）
-gtkwave dump.vcd
-```
-
-### Using ModelSim / 使用 ModelSim
-
-```tcl
-vlog src/*.v tb/tb_cpu.v
-vsim tb_cpu
-run -all
-```
-
----
-
-## 📐 Architecture / 架構圖
-
-```
-         ┌─────────┐      ┌──────────┐      ┌─────────┐
- clk ───►│   PC    │─────►│  Instr.  │─────►│ Control │
-reset───►│(Counter)│      │  Memory  │      │  Unit   │
-         └─────────┘      └──────────┘      └────┬────┘
-                                                  │
-                                            ┌─────▼─────┐
-                                            │    ALU    │
-                                            │  (8-bit)  │
-                                            └───────────┘
-```
-
----
-
-## 🛠️ Development Environment / 開發環境
-
-| Tool / 工具 | Version / 版本 |
-|---|---|
-| Verilog Simulator | ModelSim / Icarus Verilog |
-| Language / 語言 | Verilog HDL |
-| Target / 目標平台 | FPGA / Simulation |
-
----
-
-## 📅 Development Progress / 開發進度
-
-- [x] Program Counter (PC) / 程式計數器
-- [x] Clock & Reset logic / 時脈與重置邏輯
-- [x] Basic ALU structure / 基本 ALU 架構
-- [ ] Instruction Memory / 指令記憶體
-- [ ] Instruction Decode / 指令解碼
-- [ ] Register File / 暫存器組
-- [ ] Data Memory / 資料記憶體
-- [ ] Full instruction set / 完整指令集
-
----
-
-## 📄 License / 授權
-
-MIT License
-
----
-
-## 👤 Author / 作者
+## 👤 作者
 
 **quentonxxx-creator**
-GitHub: [@quentonxxx-creator](https://github.com/quentonxxx-creator)
