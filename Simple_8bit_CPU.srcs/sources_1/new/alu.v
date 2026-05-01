@@ -1,4 +1,4 @@
-
+`timescale 1ns / 1ps
 module alu(
     input  [7:0] src_a,    // 輸入 A
     input  [7:0] src_b,    // 輸入 B
